@@ -1,11 +1,28 @@
 'use strict';
+var path = require('path');
+var fs = require('fs');
+
 var formatUA = require('./formatUA');
 var yaml = require('js-yaml');
 var indent = require('indent-string');
 var printf = require('printf');
 
-var TAPE = function(baseReporterDecorator, formatError) {
+var TAPE = function(baseReporterDecorator, formatError, config) {
+	var tapfile = config && config.outfile;
+
 	baseReporterDecorator(this);
+
+	if (tapfile) {
+		try {
+			fs.unlinkSync(tapfile);
+		} catch (err) {
+			if (err.code !== 'ENOENT')
+				throw err;
+			mkdirp(path.dirname(tapfile));
+		}
+
+		this.adapters[0] = record;
+	}
 
 	this.onRunStart = function() {
 		this.suites = {};
@@ -110,9 +127,30 @@ var TAPE = function(baseReporterDecorator, formatError) {
 	this.writeln = function(str) {
 		return this.write(str + '\n');
 	};
+
+	function record(msg) {
+		fs.appendFileSync(tapfile, msg, 'utf8');
+	}
 };
 
-TAPE.$inject = ['baseReporterDecorator', 'formatError'];
+TAPE.$inject = ['baseReporterDecorator', 'formatError', 'config.tape'];
+
+function mkdirp(dir) {
+	try {
+		fs.mkdirSync(dir);
+	} catch (err) {
+		if (err.code === 'EEXIST')
+			return;
+
+		// If cwd is removed and dir is a relative path, we can get stuck trying to create the current
+		// directory.
+		if (err.code !== 'ENOENT' || dir === '.')
+			throw err;
+
+		mkdirp(path.dirname(dir));
+		fs.mkdirSync(dir);
+	}
+}
 
 module.exports = {
 	'reporter:tape': ['type', TAPE]
