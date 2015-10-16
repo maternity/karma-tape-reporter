@@ -59,7 +59,10 @@ var TAPE = function(baseReporterDecorator, formatError, config) {
 				description: spec.description
 			};
 
-			this.writeln(printf('%(status)s %(index)d ' + (spec.skipped ? '# skip ' : '') + '%(browser)s :: %(suites)s :: %(description)s', properties));
+			if (spec.skipped)
+				this.writeln(printf('%(status)s %(index)d %(browser)s :: %(suites)s :: %(description)s # SKIP', properties));
+			else
+				this.writeln(printf('%(status)s %(index)d %(browser)s :: %(suites)s :: %(description)s', properties));
 
 			if (spec.failures && spec.failures.length > 0) {
 				this.writeln('  ---');
